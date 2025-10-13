@@ -1,0 +1,3 @@
+-- Placeholder: add your SQL migrations here when wiring to a real DB.
+-- See the conversation for a full schema including: areas, tables, customers, bookings,
+-- booking_tables, booking_events and RLS policies.
