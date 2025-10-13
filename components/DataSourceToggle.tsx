@@ -50,10 +50,9 @@ export function DataSourceToggle({
               <div>Customers: {memoryStats.customers}</div>
             </div>
             <Button 
-              size="sm" 
               variant={currentSource === 'memory' ? 'default' : 'outline'}
               onClick={() => onToggle('memory')}
-              className="w-full mt-2"
+              className="w-full mt-2 text-sm"
             >
               Use In-Memory
             </Button>
@@ -66,10 +65,9 @@ export function DataSourceToggle({
               <div>Customers: {supabaseStats.customers}</div>
             </div>
             <Button 
-              size="sm" 
               variant={currentSource === 'supabase' ? 'default' : 'outline'}
               onClick={() => onToggle('supabase')}
-              className="w-full mt-2"
+              className="w-full mt-2 text-sm"
             >
               Use Supabase
             </Button>

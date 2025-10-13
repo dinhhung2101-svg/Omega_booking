@@ -7,7 +7,7 @@ type Ctx = {
   open: boolean;
   setOpen: (b: boolean)=>void;
   items: Array<{value: string; label: string}>;
-  setItems: (list: Array<{value: string; label: string}>)=>void;
+  setItems: (list: Array<{value: string; label: string}> | ((prev: Array<{value: string; label: string}>) => Array<{value: string; label: string}>))=>void;
 };
 const SelectCtx = React.createContext<Ctx | null>(null);
 

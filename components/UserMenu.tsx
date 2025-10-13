@@ -6,7 +6,7 @@ export function UserMenu({ currentUser, onLogout }: any) {
   if (!currentUser) {
     return (
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm">Đăng nhập</Button>
+        <Button variant="outline" className="text-sm">Đăng nhập</Button>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export function UserMenu({ currentUser, onLogout }: any) {
           {getRoleLabel(currentUser.role)}
         </Badge>
       </div>
-      <Button variant="outline" size="sm" onClick={onLogout} className="mobile-btn text-xs md:text-sm">Đăng xuất</Button>
+      <Button variant="outline" onClick={onLogout} className="mobile-btn text-xs md:text-sm">Đăng xuất</Button>
     </div>
   );
 }

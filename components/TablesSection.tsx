@@ -33,15 +33,15 @@ export function TablesSection({ title, tables, bookingsByTable, onPickTable, isO
   }, []);
 
   return (
-    <Card className="rounded-2xl" ref={containerRef}>
+    <div ref={containerRef}>
+      <Card className="rounded-2xl">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl">{title}</CardTitle>
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 h-8 w-8"
+            className="p-1 h-8 w-8 text-sm"
           >
             <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}>
               ▶
@@ -70,6 +70,7 @@ export function TablesSection({ title, tables, bookingsByTable, onPickTable, isO
           </div>
         </CardContent>
       )}
-    </Card>
+      </Card>
+    </div>
   );
 }

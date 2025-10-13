@@ -48,7 +48,7 @@ export function DataSourceStatus({
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">🧠</span>
               <span className="font-medium text-sm">In-Memory Data</span>
-              {!useSupabase && <Badge size="sm">Active</Badge>}
+              {!useSupabase && <Badge className="text-xs">Active</Badge>}
             </div>
             <div className="text-xs space-y-1">
               <div>Bookings: {memoryStats.bookings}</div>
@@ -63,7 +63,7 @@ export function DataSourceStatus({
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">☁️</span>
               <span className="font-medium text-sm">Supabase Database</span>
-              {useSupabase && <Badge size="sm">Active</Badge>}
+              {useSupabase && <Badge className="text-xs">Active</Badge>}
             </div>
             <div className="text-xs space-y-1">
               <div>Bookings: {supabaseStats.bookings}</div>
