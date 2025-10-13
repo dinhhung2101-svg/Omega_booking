@@ -21,3 +21,4 @@ Open http://localhost:3000
 
 ## Next steps (optional)
 When you're ready, wire it to Supabase + API routes as discussed earlier. You can drop the component from `app/page.tsx` into a real app and keep the same UI imports.
+# Trigger Vercel deployment
