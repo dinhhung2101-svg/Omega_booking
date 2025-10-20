@@ -33,43 +33,45 @@ export function TablesSection({ title, tables, bookingsByTable, onPickTable, isO
   }, []);
 
   return (
-    <Card className="rounded-2xl" ref={containerRef}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xl">{title}</CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 h-8 w-8"
-          >
-            <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}>
-              ▶
-            </div>
-          </Button>
-        </div>
-      </CardHeader>
-      {isExpanded && (
-        <CardContent>
-          <div 
-            className="grid gap-3"
-            style={{
-              gridTemplateColumns: gridCols
-            }}
-          >
-            {tables.map((t:any) => (
-              <TableCard
-                key={t.id}
-                table={t}
-                data={bookingsByTable[t.id]}
-                onClick={onPickTable}
-                isOccupied={isOccupied(t.id)}
-                isLocked={isLocked(t.id)}
-              />
-            ))}
+    <div ref={containerRef}>
+      <Card className="rounded-2xl">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">{title}</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1 h-8 w-8"
+            >
+              <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : 'rotate-0'}`}>
+                ▶
+              </div>
+            </Button>
           </div>
-        </CardContent>
-      )}
-    </Card>
+        </CardHeader>
+        {isExpanded && (
+          <CardContent>
+            <div 
+              className="grid gap-3"
+              style={{
+                gridTemplateColumns: gridCols
+              }}
+            >
+              {tables.map((t:any) => (
+                <TableCard
+                  key={t.id}
+                  table={t}
+                  data={bookingsByTable[t.id]}
+                  onClick={onPickTable}
+                  isOccupied={isOccupied(t.id)}
+                  isLocked={isLocked(t.id)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    </div>
   );
 }
