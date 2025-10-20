@@ -15,6 +15,7 @@ function CustomerCard({ customer }: any) {
     <Card className="border-0 shadow-none bg-transparent">
       <CardHeader className="p-0 pb-2"><CardTitle className="text-base flex items-center gap-2">Khách hàng</CardTitle></CardHeader>
       <CardContent className="p-0 space-y-2 text-sm">
+        <div>Tên: {customer.name}</div>
         <div>Điện thoại: {customer.phone}</div>
         <div>Lần đến: {customer.visits ?? 0} • Lần gần nhất: {customer.lastVisit ?? "-"}</div>
       </CardContent>
@@ -201,7 +202,15 @@ export function BookingDrawer({ open, setOpen, tableId, data, onAction, role, ta
             {data?.bookingId ? (
               <div className="flex items-center gap-3 text-sm">
                 <span className="inline-flex items-center gap-1">
-                  Giờ: {data.startAt ? format(data.startAt, "HH:mm") : "Chưa đến"} - {data?.endAt ? format(data.endAt, "HH:mm") : "-"}
+                  Giờ: {
+                    data.status === "SEATED" || data.status === "WALKIN" 
+                      ? (data.startAt ? format(data.startAt, "HH:mm") : "Đã đến")
+                      : (data.bookingTime ? format(data.bookingTime, "HH:mm") : "Chưa đặt")
+                  } - {
+                    data.status === "CLOSED" && data.endAt 
+                      ? format(data.endAt, "HH:mm") 
+                      : "-"
+                  }
                 </span>
                 <span className="inline-flex items-center gap-1">Số khách: {data.partySize}</span>
                 <Badge variant="outline">

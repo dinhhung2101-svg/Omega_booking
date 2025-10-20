@@ -332,11 +332,18 @@ const seedMockState = (date: Date, areaId: string, tables: any[]) => {
           const statuses = ["HOLD", "SEATED", "WALKIN"];
           const status = statuses[Math.floor(Math.random() * statuses.length)];
           
+          // Tạo thời gian đến thực tế hợp lý cho khách đã ngồi
+          const actualArrivalTime = status === "SEATED" 
+            ? new Date(new Date().getTime() - Math.random() * 2 * 60 * 60 * 1000) // Thời gian đến trong 2h qua
+            : status === "WALKIN"
+            ? new Date(new Date().getTime() - Math.random() * 1 * 60 * 60 * 1000) // Khách vãng lai trong 1h qua
+            : null;
+          
           byTable[randomTable.id] = {
             status: status,
             bookingId: `BK-${areaId}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
             bookingTime: new Date(start.getTime() - Math.floor(Math.random() * 24) * 60 * 60 * 1000), // Booking trước 1-24h
-            startAt: status === "SEATED" ? start : null, // Chỉ có startAt khi đã check-in
+            startAt: actualArrivalTime, // Thời gian thực tế khách đến
             endAt: end,
             partySize: Math.max(2, randomTable.capacity - Math.floor(Math.random() * 2)),
             staff: staff,
@@ -437,6 +444,94 @@ const getHistoricalData = (completedBookings: any[] = []) => {
   return data;
 };
 
+// Mobile Customer List Component
+function MobileCustomerList({ customers, searchQuery, onSelectCustomer, completedBookings }: any) {
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+
+  const filteredCustomers = customers.filter((customer: any) => 
+    customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    customer.phone.includes(searchQuery)
+  );
+
+  const handleSelectCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setShowCustomerModal(true);
+    onSelectCustomer(customer);
+  };
+
+  const handleCloseModal = () => {
+    setShowCustomerModal(false);
+    setSelectedCustomer(null);
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Mobile Customer Cards */}
+      {filteredCustomers.map((customer: any, index: number) => (
+        <div
+          key={customer.id}
+          onClick={() => handleSelectCustomer(customer)}
+          className="mobile-dashboard-card bg-white p-4 border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center space-x-3">
+            {/* Customer Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-semibold text-gray-900 truncate">
+                  {customer.name}
+                </h3>
+                <Badge variant={customer.visitCount > 5 ? "default" : "secondary"} className="text-xs">
+                  {customer.visitCount > 5 ? "VIP" : "Thường"}
+                </Badge>
+              </div>
+              <div 
+                className="text-xs text-gray-600 mb-1 font-bold cursor-pointer hover:text-blue-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`tel:${customer.phone}`, '_self');
+                }}
+              >
+                {customer.phone}
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>{customer.visitCount} lần đến</span>
+                <span>
+                  {customer.lastVisit ? 
+                    new Date(customer.lastVisit).toLocaleDateString('vi-VN') : 
+                    'Chưa có'
+                  }
+                </span>
+              </div>
+            </div>
+            
+            {/* Arrow */}
+            <div className="text-gray-400">
+              <span>›</span>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {filteredCustomers.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <div className="text-4xl mb-2">👥</div>
+          <div className="text-sm">Không tìm thấy khách hàng nào</div>
+        </div>
+      )}
+
+      {/* Customer Detail Drawer */}
+      <CustomerDetailDrawer
+        open={showCustomerModal}
+        setOpen={setShowCustomerModal}
+        customer={selectedCustomer}
+        completedBookings={completedBookings}
+        onClose={handleCloseModal}
+      />
+    </div>
+  );
+}
+
 // Component CRM - Danh sách khách hàng
 function CustomerList({ customers, onSelectCustomer, completedBookings }: any) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -535,8 +630,8 @@ function CustomerDetailDrawer({ open, onClose, customer, completedBookings }: an
         side="right" 
         className="h-full custom-drawer-width"
         style={{
-          width: window.innerWidth < 768 ? '66.67%' : window.innerWidth < 1024 ? '440px' : '500px',
-          maxWidth: window.innerWidth < 768 ? '66.67%' : 'none'
+          width: window.innerWidth < 768 ? '85%' : window.innerWidth < 1024 ? '600px' : '700px',
+          maxWidth: window.innerWidth < 768 ? '85%' : 'none'
         }}
       >
         <SheetHeader>
@@ -581,61 +676,57 @@ function CustomerDetail({ customer, completedBookings }: any) {
   }, [customer, completedBookings]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Thông tin khách hàng</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Họ và tên</Label>
-            <div className="text-lg font-semibold">{customer.name}</div>
-          </div>
-          
-          <div>
-            <Label className="text-sm font-medium">Số điện thoại</Label>
-            <div className="text-lg">{customer.phone}</div>
-          </div>
-          
-          {customer.birthday && (
-            <div>
-              <Label className="text-sm font-medium">Ngày sinh</Label>
-              <div className="text-lg">{new Date(customer.birthday).toLocaleDateString('vi-VN')}</div>
-            </div>
-          )}
-          
-          <div>
-            <Label className="text-sm font-medium">Số lần tới nhà hàng</Label>
-            <div className="text-lg font-semibold text-blue-600">{customer.visitCount} lần</div>
-          </div>
-          
-          {customer.lastVisit && (
-            <div>
-              <Label className="text-sm font-medium">Lần cuối tới</Label>
-              <div className="text-lg">{new Date(customer.lastVisit).toLocaleDateString('vi-VN')}</div>
-            </div>
-          )}
+    <div>
+      <div className="space-y-4">
+        <div>
+          <Label className="text-sm font-medium">Họ và tên</Label>
+          <div className="text-lg font-semibold">{customer.name}</div>
         </div>
+        
+        <div>
+          <Label className="text-sm font-medium">Số điện thoại</Label>
+          <div className="text-lg">{customer.phone}</div>
+        </div>
+        
+        {customer.birthday && (
+          <div>
+            <Label className="text-sm font-medium">Ngày sinh</Label>
+            <div className="text-lg">{new Date(customer.birthday).toLocaleDateString('vi-VN')}</div>
+          </div>
+        )}
+        
+        <div>
+          <Label className="text-sm font-medium">Số lần tới nhà hàng</Label>
+          <div className="text-lg font-semibold text-blue-600">{customer.visitCount} lần</div>
+        </div>
+        
+        {customer.lastVisit && (
+          <div>
+            <Label className="text-sm font-medium">Lần cuối tới</Label>
+            <div className="text-lg">{new Date(customer.lastVisit).toLocaleDateString('vi-VN')}</div>
+          </div>
+        )}
+      </div>
 
         <div className="mt-6">
           <Label className="text-sm font-medium">Lịch sử tới nhà hàng</Label>
           <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
             {visitHistory.map((visit: any, index: number) => (
               <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium">
-                      {new Date(visit.startAt).toLocaleDateString('vi-VN')} - {new Date(visit.startAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Bàn: {visit.tableName} | {visit.partySize} người
-                    </div>
-                    {visit.note && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        Ghi chú: {visit.note}
-                      </div>
-                    )}
+                <div>
+                  <div className="font-medium">
+                    {new Date(visit.startAt).toLocaleDateString('vi-VN')} - {new Date(visit.startAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
+                  <div className="text-sm text-gray-600">
+                    Bàn: {visit.tableName} | {visit.partySize} người
+                  </div>
+                  {visit.note && (
+                    <div className="text-sm text-gray-500 mt-1">
+                      Ghi chú: {visit.note}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2">
                   <Badge variant={visit.status === "CLOSED" ? "default" : "secondary"}>
                     {visit.status === "CLOSED" ? "Đã hoàn thành" : visit.status}
                   </Badge>
@@ -644,8 +735,7 @@ function CustomerDetail({ customer, completedBookings }: any) {
             ))}
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -2923,6 +3013,15 @@ export default function Page() {
     setStore(newStore);
   }, [areas, tables, date]);
 
+  // Force refresh store để áp dụng dữ liệu mới
+  const refreshStore = () => {
+    const newStore: { [key: string]: Record<string, any> } = {};
+    areas.forEach(area => {
+      newStore[area.id] = seedMockState(date, area.id, tables);
+    });
+    setStore(newStore);
+  };
+
   // Cập nhật danh sách khách hàng khi completedBookings thay đổi
   useEffect(() => {
     const newCustomers = generateCustomers(completedBookings);
@@ -3387,41 +3486,225 @@ export default function Page() {
             </div>
           );
         }
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Dashboard</h2>
-              <div className="text-sm text-gray-500">
-                Cập nhật lần cuối: {format(new Date(), "dd/MM/yyyy HH:mm")}
+        // Mobile Dashboard Layout
+        if (isMobile) {
+          return (
+            <div className="space-y-4">
+              {/* Mobile Header */}
+              <div className="flex flex-col space-y-2">
+                <h2 className="text-xl font-bold">Dashboard</h2>
+                <div className="text-xs text-gray-500">
+                  Cập nhật: {format(new Date(), "dd/MM HH:mm")}
+                </div>
+              </div>
+              
+              {/* Mobile KPI Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="mobile-dashboard-card bg-blue-50 p-4 border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600">{kpis.total}</div>
+                  <div className="text-sm text-blue-800">Tổng booking</div>
+                </div>
+                <div className="mobile-dashboard-card bg-green-50 p-4 border border-green-200">
+                  <div className="text-2xl font-bold text-green-600">{kpis.seated}</div>
+                  <div className="text-sm text-green-800">Đang ngồi</div>
+                </div>
+                <div className="mobile-dashboard-card bg-purple-50 p-4 border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600">{kpis.walkin}</div>
+                  <div className="text-sm text-purple-800">Khách vãng lai</div>
+                </div>
+                <div className="mobile-dashboard-card bg-amber-50 p-4 border border-amber-200">
+                  <div className="text-2xl font-bold text-amber-600">{kpis.hold}</div>
+                  <div className="text-sm text-amber-800">Đã đặt</div>
+                </div>
+              </div>
+
+              {/* Mobile Reports */}
+              <div className="space-y-4">
+                {/* Quick Stats */}
+                <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+                  <h3 className="font-semibold text-gray-800 mb-3">Thống kê nhanh</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tổng bàn:</span>
+                      <span className="font-medium">{tables.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Khu vực:</span>
+                      <span className="font-medium">{areas.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Khách hôm nay:</span>
+                      <span className="font-medium">{completedBookings.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tỷ lệ lấp đầy:</span>
+                      <span className="font-medium">{Math.round((kpis.seated + kpis.walkin) / tables.length * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Mobile Booking Detail Report with Pagination */}
+                <MobileBookingDetailReport completedBookings={completedBookings} />
+                
+                {/* Mobile 7 Days Report with Table */}
+                <Mobile7DaysReport completedBookings={completedBookings} />
+                
+                {/* Mobile Staff Report with Date Selection */}
+                <MobileStaffReport completedBookings={completedBookings} />
+                
+                {/* Mobile Table Performance Report with Date Selection */}
+                <MobileTablePerformanceReport areas={areas} tables={tables} completedBookings={completedBookings} />
               </div>
             </div>
+          );
+        }
+
+        // Desktop Dashboard Layout (Original)
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">Dashboard</h2>
             
-            {/* Tổng quan nhanh */}
-            <div className="mobile-kpi-grid grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatKPI label="Tổng booking" value={kpis.total} />
-              <StatKPI label="Đang ngồi" value={kpis.seated} />
-              <StatKPI label="Khách vãng lai" value={kpis.walkin} />
-              <StatKPI label="Đã đặt" value={kpis.hold} />
+            {/* Desktop KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="rounded-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Tổng booking</p>
+                      <p className="text-3xl font-bold text-blue-600">{kpis.total}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl">📊</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Đang ngồi</p>
+                      <p className="text-3xl font-bold text-green-600">{kpis.seated}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl">🟢</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Khách vãng lai</p>
+                      <p className="text-3xl font-bold text-purple-600">{kpis.walkin}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl">🚶</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="rounded-xl">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Đã đặt</p>
+                      <p className="text-3xl font-bold text-amber-600">{kpis.hold}</p>
+                    </div>
+                    <div className="h-12 w-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <span className="text-2xl">🟡</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Báo cáo mới với layout đẹp */}
-            <div className="space-y-6">
-              {/* Báo cáo chi tiết booking */}
-              <BookingDetailReport completedBookings={completedBookings} areas={areas} tables={tables} />
-              
-              {/* Báo cáo booking 7 ngày */}
-              <Booking7DaysReport store={store} areas={areas} completedBookings={completedBookings} />
-              
-              {/* Báo cáo nhân viên */}
-              <StaffBookingReport store={store} areas={areas} completedBookings={completedBookings} />
-              
-              {/* Báo cáo hiệu suất bàn theo khu */}
-              <TablePerformanceReport store={store} areas={areas} tables={tables} completedBookings={completedBookings} />
-            </div>
+            {/* Desktop Reports - Original Components */}
+            <BookingDetailReport completedBookings={completedBookings} areas={areas} tables={tables} />
+            <Booking7DaysReport store={store} areas={areas} completedBookings={completedBookings} />
+            <StaffBookingReport store={store} areas={areas} completedBookings={completedBookings} />
+            <TablePerformanceReport store={store} areas={areas} tables={tables} completedBookings={completedBookings} />
           </div>
         );
       
       case "crm":
+        // Mobile CRM Layout
+        if (isMobile) {
+          return (
+            <div className="space-y-4 p-4">
+              {/* Mobile CRM Header */}
+              <div className="flex flex-col space-y-3">
+                <h2 className="text-xl font-bold">Quản lý khách hàng</h2>
+                
+                {/* Mobile Search Bar */}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm khách hàng..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <div 
+                    style={{
+                      fontSize: '20px',
+                      color: '#9CA3AF',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    🔍
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Customer Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="mobile-dashboard-card bg-blue-50 p-4 border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600">{customers.length}</div>
+                  <div className="text-sm text-blue-800">Tổng khách hàng</div>
+                </div>
+                <div className="mobile-dashboard-card bg-green-50 p-4 border border-green-200">
+                  <div className="text-2xl font-bold text-green-600">
+                    {customers.filter((c: any) => c.visitCount > 5).length}
+                  </div>
+                  <div className="text-sm text-green-800">Khách VIP</div>
+                </div>
+                <div className="mobile-dashboard-card bg-purple-50 p-4 border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {customers.filter((c: any) => c.lastVisit && 
+                      new Date(c.lastVisit) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                    ).length}
+                  </div>
+                  <div className="text-sm text-purple-800">Khách gần đây</div>
+                </div>
+                <div className="mobile-dashboard-card bg-amber-50 p-4 border border-amber-200">
+                  <div className="text-2xl font-bold text-amber-600">
+                    {Math.round(customers.reduce((sum: number, c: any) => sum + c.visitCount, 0) / customers.length) || 0}
+                  </div>
+                  <div className="text-sm text-amber-800">TB lượt/khách</div>
+                </div>
+              </div>
+
+              {/* Mobile Customer List */}
+              <MobileCustomerList 
+                customers={customers} 
+                searchQuery={searchQuery}
+                onSelectCustomer={(customer: any) => {}}
+                completedBookings={completedBookings}
+              />
+            </div>
+          );
+        }
+
+        // Desktop CRM Layout (Original)
         return (
           <div className="p-6">
             <CustomerList 
@@ -3433,6 +3716,26 @@ export default function Page() {
         );
       
       case "settings":
+        // Mobile Settings Layout
+        if (isMobile) {
+          return (
+            <MobileSettingsLayout 
+              users={users}
+              areas={areas}
+              tables={tables}
+              onAddUser={handleAddUser}
+              onDeleteUser={handleDeleteUser}
+              onAddArea={handleAddArea}
+              onDeleteArea={handleDeleteArea}
+              onUpdateArea={handleUpdateArea}
+              onAddTable={handleAddTable}
+              onDeleteTable={handleDeleteTable}
+              onUpdateTable={handleUpdateTable}
+            />
+          );
+        }
+
+        // Desktop Settings Layout (Original)
         return (
           <div className="space-y-8">
             <UserManagement 
@@ -3580,6 +3883,757 @@ export default function Page() {
           onLogout={handleLogout}
         />
       )}
+    </div>
+  );
+}
+
+// Mobile Settings Layout with Tabs
+function MobileSettingsLayout({ 
+  users, areas, tables, 
+  onAddUser, onDeleteUser, 
+  onAddArea, onDeleteArea, onUpdateArea,
+  onAddTable, onDeleteTable, onUpdateTable 
+}: any) {
+  const [activeTab, setActiveTab] = useState<'users' | 'areas' | 'tables'>('users');
+
+  const tabs = [
+    { id: 'users', label: 'Tài khoản', icon: '👥' },
+    { id: 'areas', label: 'Khu vực', icon: '🏢' },
+    { id: 'tables', label: 'Bàn ăn', icon: '🪑' }
+  ];
+
+  return (
+    <div className="space-y-4 p-4">
+      {/* Mobile Settings Header */}
+      <div className="flex flex-col space-y-3">
+        <h2 className="text-xl font-bold">Cài đặt hệ thống</h2>
+        
+        {/* Mobile Tabs Navigation */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <span className="text-base">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Mobile Settings Content */}
+      <div className="space-y-4">
+        {activeTab === 'users' && (
+          <MobileUserManagement 
+            users={users}
+            onAddUser={onAddUser}
+            onDeleteUser={onDeleteUser}
+          />
+        )}
+        
+        {activeTab === 'areas' && (
+          <MobileAreaManagement 
+            areas={areas}
+            onAddArea={onAddArea}
+            onDeleteArea={onDeleteArea}
+            onUpdateArea={onUpdateArea}
+          />
+        )}
+        
+        {activeTab === 'tables' && (
+          <MobileTableManagement 
+            areas={areas}
+            tables={tables}
+            onAddTable={onAddTable}
+            onDeleteTable={onDeleteTable}
+            onUpdateTable={onUpdateTable}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Mobile User Management
+function MobileUserManagement({ users, onAddUser, onDeleteUser }: any) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newUser, setNewUser] = useState({
+    username: "",
+    password: "",
+    role: "staff"
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newUser.username && newUser.password) {
+      onAddUser(newUser);
+      setNewUser({ username: "", password: "", role: "staff" });
+      setShowAddForm(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Add User Button */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+        >
+          + Tạo tài khoản
+        </Button>
+      </div>
+
+      {/* Add User Form */}
+      {showAddForm && (
+        <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+          <h3 className="font-semibold text-gray-800 mb-3">Tạo tài khoản mới</h3>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Tên đăng nhập</Label>
+              <Input
+                type="text"
+                value={newUser.username}
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                className="mt-1"
+                placeholder="Nhập tên đăng nhập"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Mật khẩu</Label>
+              <Input
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                className="mt-1"
+                placeholder="Nhập mật khẩu"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Vai trò</Label>
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="staff">Nhân viên</option>
+                <option value="manager">Quản lý</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div className="flex space-x-2 pt-2">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                Tạo
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => setShowAddForm(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Users List */}
+      <div className="space-y-3">
+        {users.map((user: any, index: number) => (
+          <div key={index} className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">{user.username}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  <Badge variant={user.role === "admin" ? "destructive" : user.role === "manager" ? "default" : "secondary"} className="text-xs">
+                    {user.role === "admin" ? "Admin" : user.role === "manager" ? "Quản lý" : "Nhân viên"}
+                  </Badge>
+                </div>
+              </div>
+              {user.role !== "admin" && (
+                <Button 
+                  variant="destructive" 
+                  onClick={() => onDeleteUser(index)}
+                  className="text-xs px-2 py-1"
+                >
+                  Xóa
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Mobile Area Management
+function MobileAreaManagement({ areas, onAddArea, onDeleteArea, onUpdateArea }: any) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingArea, setEditingArea] = useState<any>(null);
+  const [newArea, setNewArea] = useState({
+    id: "",
+    name: "",
+    position: ""
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newArea.id && newArea.name && newArea.position) {
+      onAddArea(newArea);
+      setNewArea({ id: "", name: "", position: "" });
+      setShowAddForm(false);
+    }
+  };
+
+  const handleEdit = (area: any) => {
+    setEditingArea(area);
+    setNewArea({ id: area.id, name: area.name, position: area.position });
+    setShowAddForm(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingArea && newArea.name) {
+      onUpdateArea(editingArea.id, newArea);
+      setEditingArea(null);
+      setNewArea({ id: "", name: "", position: "" });
+      setShowAddForm(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Add Area Button */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+        >
+          + Thêm khu vực
+        </Button>
+      </div>
+
+      {/* Add/Edit Area Form */}
+      {showAddForm && (
+        <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+          <h3 className="font-semibold text-gray-800 mb-3">
+            {editingArea ? 'Sửa khu vực' : 'Thêm khu vực mới'}
+          </h3>
+          <form onSubmit={editingArea ? handleUpdate : handleSubmit} className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">ID khu vực</Label>
+              <Input
+                type="text"
+                value={newArea.id}
+                onChange={(e) => setNewArea({ ...newArea, id: e.target.value })}
+                className="mt-1"
+                placeholder="VD: A1, B2..."
+                disabled={!!editingArea}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Tên khu vực</Label>
+              <Input
+                type="text"
+                value={newArea.name}
+                onChange={(e) => setNewArea({ ...newArea, name: e.target.value })}
+                className="mt-1"
+                placeholder="VD: Tầng 1, Khu VIP..."
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Vị trí</Label>
+              <Input
+                type="text"
+                value={newArea.position}
+                onChange={(e) => setNewArea({ ...newArea, position: e.target.value })}
+                className="mt-1"
+                placeholder="VD: Gần cửa ra vào..."
+              />
+            </div>
+            <div className="flex space-x-2 pt-2">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                {editingArea ? 'Cập nhật' : 'Thêm'}
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingArea(null);
+                  setNewArea({ id: "", name: "", position: "" });
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Areas List */}
+      <div className="space-y-3">
+        {areas.map((area: any, index: number) => (
+          <div key={area.id} className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">{area.name}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  <div>ID: {area.id}</div>
+                  <div>Vị trí: {area.position}</div>
+                  <div>Số bàn: {area.tables?.length || 0}</div>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleEdit(area)}
+                  className="text-xs px-2 py-1"
+                >
+                  Sửa
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => onDeleteArea(area.id)}
+                  className="text-xs px-2 py-1"
+                >
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Mobile Table Management
+function MobileTableManagement({ areas, tables, onAddTable, onDeleteTable, onUpdateTable }: any) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingTable, setEditingTable] = useState<any>(null);
+  const [newTable, setNewTable] = useState({
+    id: "",
+    name: "",
+    areaId: "",
+    capacity: 4
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTable.id && newTable.name && newTable.areaId) {
+      onAddTable(newTable);
+      setNewTable({ id: "", name: "", areaId: "", capacity: 4 });
+      setShowAddForm(false);
+    }
+  };
+
+  const handleEdit = (table: any) => {
+    setEditingTable(table);
+    setNewTable({ 
+      id: table.id, 
+      name: table.name, 
+      areaId: table.areaId, 
+      capacity: table.capacity 
+    });
+    setShowAddForm(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingTable && newTable.name) {
+      onUpdateTable(editingTable.id, newTable);
+      setEditingTable(null);
+      setNewTable({ id: "", name: "", areaId: "", capacity: 4 });
+      setShowAddForm(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Add Table Button */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={() => setShowAddForm(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
+        >
+          + Thêm bàn
+        </Button>
+      </div>
+
+      {/* Add/Edit Table Form */}
+      {showAddForm && (
+        <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+          <h3 className="font-semibold text-gray-800 mb-3">
+            {editingTable ? 'Sửa bàn ăn' : 'Thêm bàn ăn mới'}
+          </h3>
+          <form onSubmit={editingTable ? handleUpdate : handleSubmit} className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">ID bàn</Label>
+              <Input
+                type="text"
+                value={newTable.id}
+                onChange={(e) => setNewTable({ ...newTable, id: e.target.value })}
+                className="mt-1"
+                placeholder="VD: A1-01, B2-05..."
+                disabled={!!editingTable}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Tên bàn</Label>
+              <Input
+                type="text"
+                value={newTable.name}
+                onChange={(e) => setNewTable({ ...newTable, name: e.target.value })}
+                className="mt-1"
+                placeholder="VD: Bàn 1, Bàn VIP..."
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Khu vực</Label>
+              <select
+                value={newTable.areaId}
+                onChange={(e) => setNewTable({ ...newTable, areaId: e.target.value })}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">Chọn khu vực</option>
+                {areas.map((area: any) => (
+                  <option key={area.id} value={area.id}>{area.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Sức chứa</Label>
+              <Input
+                type="number"
+                value={newTable.capacity}
+                onChange={(e) => setNewTable({ ...newTable, capacity: parseInt(e.target.value) || 4 })}
+                className="mt-1"
+                min="1"
+                max="20"
+              />
+            </div>
+            <div className="flex space-x-2 pt-2">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
+                {editingTable ? 'Cập nhật' : 'Thêm'}
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingTable(null);
+                  setNewTable({ id: "", name: "", areaId: "", capacity: 4 });
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                Hủy
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Tables List */}
+      <div className="space-y-3">
+        {tables.map((table: any, index: number) => (
+          <div key={table.id} className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">{table.name}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  <div>ID: {table.id}</div>
+                  <div>Khu vực: {areas.find((a: any) => a.id === table.areaId)?.name || 'N/A'}</div>
+                  <div>Sức chứa: {table.capacity} người</div>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleEdit(table)}
+                  className="text-xs px-2 py-1"
+                >
+                  Sửa
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => onDeleteTable(table.id)}
+                  className="text-xs px-2 py-1"
+                >
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Mobile Booking Detail Report with Pagination
+function MobileBookingDetailReport({ completedBookings }: any) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const totalPages = Math.ceil(completedBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBookings = completedBookings.slice(startIndex, endIndex);
+
+  return (
+    <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+      <h3 className="font-semibold text-gray-800 mb-3">Chi tiết booking hôm nay</h3>
+      <div className="space-y-3">
+        {currentBookings.map((booking: any, index: number) => (
+          <div key={index} className="border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium">{booking.customer?.name || "Khách vãng lai"}</div>
+              <Badge variant={booking.status === 'SEATED' ? 'default' : booking.status === 'WALKIN' ? 'default' : 'secondary'}>
+                {booking.status === 'SEATED' ? 'Đang ngồi' : 
+                 booking.status === 'WALKIN' ? 'Khách vãng lai' : 
+                 booking.status === 'HOLD' ? 'Đã đặt' : 'Đã đóng'}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <div>Bàn: {booking.tableName || booking.tableId}</div>
+              <div>Số khách: {booking.partySize}</div>
+              <div>Nhân viên: {booking.staff || '-'}</div>
+              <div>Giờ: {booking.startAt ? format(new Date(booking.startAt), "HH:mm") : '-'}</div>
+            </div>
+            {booking.note && (
+              <div className="text-xs text-gray-500 mt-2">Ghi chú: {booking.note}</div>
+            )}
+          </div>
+        ))}
+        {completedBookings.length === 0 && (
+          <div className="text-sm text-gray-500 text-center py-4">Chưa có booking nào</div>
+        )}
+      </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            ←
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 text-sm border rounded ${
+                currentPage === page 
+                  ? 'border-gray-300 font-bold text-gray-800' 
+                  : 'border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mobile 7 Days Report with Table Format
+function Mobile7DaysReport({ completedBookings }: any) {
+  const reportData = (() => {
+    const data: any[] = [];
+    const today = new Date(2025, 9, 13);
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      let bookingCount = 0;
+      let walkinCount = 0;
+      let cancelledCount = 0; // Thêm số bàn hủy
+
+      completedBookings.forEach((booking: any) => {
+        if (booking?.startAt) {
+          const bookingDate = new Date(booking.startAt);
+          if (bookingDate >= startOfDay && bookingDate <= endOfDay) {
+            if (booking.status === 'WALKIN') {
+              walkinCount++;
+            } else if (booking.status === 'CANCELLED') {
+              cancelledCount++;
+            } else {
+              bookingCount++;
+            }
+          }
+        }
+      });
+
+      data.push({
+        date: format(date, "dd/MM/yyyy"),
+        dayOfWeek: format(date, "EEEE"),
+        totalTables: bookingCount + walkinCount,
+        bookingCount: bookingCount,
+        walkinCount: walkinCount,
+        cancelledCount: cancelledCount
+      });
+    }
+    return data;
+  })();
+
+  return (
+    <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+      <h3 className="font-semibold text-gray-800 mb-3">Báo cáo 7 ngày gần nhất</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-2 font-medium text-gray-600">Ngày</th>
+              <th className="text-center py-2 font-medium text-gray-600">Tổng lượt bàn</th>
+              <th className="text-center py-2 font-medium text-gray-600">Booking</th>
+              <th className="text-center py-2 font-medium text-gray-600">Hủy</th>
+              <th className="text-center py-2 font-medium text-gray-600">Vãng lai</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reportData.map((day, index) => (
+              <tr key={index} className="border-b border-gray-100">
+                <td className="py-2 font-medium">{day.date}</td>
+                <td className="py-2 text-center font-medium">{day.totalTables}</td>
+                <td className="py-2 text-center text-blue-700">{day.bookingCount}</td>
+                <td className="py-2 text-center text-red-700">{day.cancelledCount}</td>
+                <td className="py-2 text-center text-yellow-700">{day.walkinCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Mobile Staff Report with Date Selection
+function MobileStaffReport({ completedBookings }: any) {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const filteredBookings = completedBookings.filter((booking: any) => {
+    if (!booking.startAt) return false;
+    const bookingDate = new Date(booking.startAt);
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+    const bookingDateStr = bookingDate.toISOString().split('T')[0];
+    return bookingDateStr === selectedDateStr;
+  });
+
+  const staffData = (() => {
+    const staffMap = new Map();
+    filteredBookings.forEach((booking: any) => {
+      if (booking.staff) {
+        if (!staffMap.has(booking.staff)) {
+          staffMap.set(booking.staff, {
+            name: booking.staff,
+            totalBookings: 0
+          });
+        }
+        const staff = staffMap.get(booking.staff);
+        staff.totalBookings++;
+      }
+    });
+    return Array.from(staffMap.values());
+  })();
+
+  return (
+    <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-800">Báo cáo nhân viên</h3>
+        <input
+          type="date"
+          value={selectedDate.toISOString().split('T')[0]}
+          onChange={(e) => setSelectedDate(new Date(e.target.value))}
+          className="text-xs border border-gray-300 rounded px-2 py-1"
+        />
+      </div>
+      <div className="space-y-2">
+        {staffData.map((staff, index) => (
+          <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+            <div className="text-sm font-medium">{staff.name}</div>
+            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+              {staff.totalBookings} booking
+            </Badge>
+          </div>
+        ))}
+        {staffData.length === 0 && (
+          <div className="text-sm text-gray-500 text-center py-4">Không có dữ liệu cho ngày này</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Mobile Table Performance Report with Date Selection
+function MobileTablePerformanceReport({ areas, tables, completedBookings }: any) {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const filteredBookings = completedBookings.filter((booking: any) => {
+    if (!booking.startAt) return false;
+    const bookingDate = new Date(booking.startAt);
+    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+    const bookingDateStr = bookingDate.toISOString().split('T')[0];
+    return bookingDateStr === selectedDateStr;
+  });
+
+  return (
+    <div className="mobile-dashboard-card bg-white p-4 border border-gray-200">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-800">Hiệu suất bàn theo khu</h3>
+        <input
+          type="date"
+          value={selectedDate.toISOString().split('T')[0]}
+          onChange={(e) => setSelectedDate(new Date(e.target.value))}
+          className="text-xs border border-gray-300 rounded px-2 py-1"
+        />
+      </div>
+      <div className="space-y-2">
+        {areas.map((area: any, index: number) => {
+          const areaTables = tables.filter((t: any) => t.areaId === area.id);
+          const areaBookings = filteredBookings.filter((booking: any) => 
+            areaTables.some((t: any) => t.id === booking.tableId)
+          );
+          const utilizationRate = areaTables.length > 0 ? 
+            Math.round((areaBookings.length / areaTables.length) * 100) : 0;
+          
+          return (
+            <div key={index} className="border border-gray-200 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">{area.name}</div>
+                <div className="text-xs text-gray-500">{utilizationRate}%</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                <div>Tổng bàn: {areaTables.length}</div>
+                <div>Đã sử dụng: {areaBookings.length}</div>
+                <div>Booking: {areaBookings.filter((b: any) => b.status !== 'WALKIN').length}</div>
+                <div>Vãng lai: {areaBookings.filter((b: any) => b.status === 'WALKIN').length}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

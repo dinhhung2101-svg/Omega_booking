@@ -1365,11 +1365,50 @@ body {
     background: white !important;
     border-top: 1px solid #e5e7eb !important;
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    display: flex !important;
+  }
+  
+  
+  .bottom-nav button {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    background-color: transparent !important;
+    cursor: pointer !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+  }
+  
+  .bottom-nav button svg {
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .bottom-nav button span {
+    font-size: 10px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    display: block !important;
   }
   
   /* Ensure content doesn't get hidden behind bottom nav */
   .main-content {
-    padding-bottom: 120px !important; /* Space for bottom nav + user bar */
+    padding-bottom: 80px !important; /* Space for bottom nav */
+  }
+  
+  /* New bottom nav spacing */
+  .content-with-bottom-nav {
+    padding-bottom: 80px !important;
   }
 }
 
@@ -1390,5 +1429,18 @@ body {
   .custom-drawer-width {
     width: 500px !important;
     max-width: none !important;
+  }
+}
+
+/* Mobile Dashboard Styles */
+@media (max-width: 768px) {
+  .mobile-dashboard-card {
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  .mobile-dashboard-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   }
 }
