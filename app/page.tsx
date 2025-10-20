@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = 'force-static';
+export const runtime = 'edge';
 
 import React, { useMemo, useState, useEffect } from "react";
 import { addDays, format, parseISO, startOfDay } from "date-fns";
